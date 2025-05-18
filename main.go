@@ -24,9 +24,9 @@ func main() {
 	// if err == nil {
 	// 	fmt.Println("Chèn thành công!")
 	// }
-	http.HandleFunc("/login", handler.Login)
-	http.HandleFunc("/register", handler.Register)
-	http.HandleFunc("/user", handler.GetUser)
+	http.HandleFunc("/login", middleware.AuthMiddleware(handler.Login))
+	http.HandleFunc("/register", middleware.AuthMiddleware(handler.Register))
+	http.HandleFunc("/user", middleware.AuthMiddleware(handler.GetUser))
 	http.HandleFunc("/product", handler.GetOneProduct)
 	http.HandleFunc("/listproduct", middleware.AuthMiddleware(handler.GetListProduct))
 	http.HandleFunc("/addproduct", handler.AddNewProduct)

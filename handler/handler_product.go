@@ -80,34 +80,6 @@ func GetOneProduct(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func GetListProduct(w http.ResponseWriter, r *http.Request) {
-	// tokenHeader := r.Header.Get("Authorization")
-
-	// if tokenHeader == "" {
-	// 	rsp.ResponseErr(w, http.StatusForbidden)
-	// 	return
-	// }
-
-	// splitted := strings.Split(tokenHeader, " ") // Bearer jwt_token
-	// if len(splitted) != 2 {
-	// 	rsp.ResponseErr(w, http.StatusForbidden)
-	// 	return
-	// }
-
-	// tokenPart := splitted[1]
-	// fmt.Println("=================Token part===================" + tokenPart)
-	// tk := &Claims{}
-
-	// token, err := jwt.ParseWithClaims(tokenPart, tk, func(token *jwt.Token) (interface{}, error) {
-	// 	return jwtKey, nil
-	// })
-
-	// if err != nil {
-	// 	// fmt.Println(err)
-	// 	rsp.ResponseErr(w, http.StatusInternalServerError)
-	// 	return
-	// }
-
-	// if token.Valid {
 	var rs = []models.Product{}
 
 	rs, err := repoImpl.NewProductRepo(driver.Mongo.Client.
@@ -147,8 +119,6 @@ func AddNewProduct(w http.ResponseWriter, r *http.Request) {
 		Price:    addData.Price,
 		Quantity: addData.Quantity,
 	}
-	// fmt.Println("add_Data: ", addData)
-	// fmt.Println(newProduct)
 	err = repoImpl.NewProductRepo(driver.Mongo.Client.Database(config.DB_NAME)).AddNewProduct(newProduct)
 
 	if err != nil {
