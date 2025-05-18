@@ -13,6 +13,9 @@ import (
 
 	rsp "go-jwt-api/response"
 
+	"github.com/gin-gonic/gin"
+	_ "github.com/gin-gonic/gin"
+
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -28,22 +31,22 @@ type FindOneProductRequest struct {
 	Name string `json:"productName"`
 }
 
-func GetOneProduct(w http.ResponseWriter, r *http.Request) {
-	tokenHeader := r.Header.Get("Authorization")
+func GetOneProduct(c *gin.Context) {
+	tokenHeader := c.GetHeader("Authorization")
 
 	if tokenHeader == "" {
-		rsp.ResponseErr(w, http.StatusForbidden)
+		c.JSON(http.StatusForbidden, gin.H{"error": "Authorization header is missing"})
 		return
 	}
 
 	splitted := strings.Split(tokenHeader, " ") // Bearer jwt_token
 	if len(splitted) != 2 {
-		rsp.ResponseErr(w, http.StatusForbidden)
+		c.JSON(http.StatusForbidden, gin.H{"error": "Authorization header is missing"})
 		return
 	}
 
 	tokenPart := splitted[1]
-	fmt.Println("=================Token part===================" + tokenPart)
+	// fmt.Println("=================Token part===================" + tokenPart)
 	tk := &Claims{}
 
 	token, err := jwt.ParseWithClaims(tokenPart, tk, func(token *jwt.Token) (interface{}, error) {
@@ -52,58 +55,59 @@ func GetOneProduct(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		// fmt.Println(err)
-		rsp.ResponseErr(w, http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token không hợp lệ hoặc đã hết hạn"})
 		return
 	}
 
 	if token.Valid {
-		product := models.Product{}
+		// product := models.Product{}
 		var req FindOneProductRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.NewDecoder(c.Request.Body).Decode(&req)
 		if err != nil {
-			rsp.ResponseErr(w, http.StatusBadRequest)
+			rsp.ResponseErr(c.Writer, http.StatusBadRequest)
 			return
 		}
 		fmt.Println("Param From request(handler): ", req.Name)
-		product, err = repoImpl.NewProductRepo(driver.Mongo.Client.
+		product, err := repoImpl.NewProductRepo(driver.Mongo.Client.
 			Database(config.DB_NAME)).
 			FindProductByName(req.Name)
 		fmt.Println("Found product: ", product)
 
 		if err != nil {
 			fmt.Println(err)
-			http.Error(w, "Product not found!", http.StatusNotFound)
+			c.JSON(http.StatusNotFound, gin.H{"error": "Product not found!"})
 			return
 		}
-		rsp.ResponseOk(w, product)
+		c.JSON(http.StatusOK, gin.H{"product": product})
 
 	}
 }
-func GetListProduct(w http.ResponseWriter, r *http.Request) {
+func GetListProduct(c *gin.Context) {
 	var rs = []models.Product{}
 
 	rs, err := repoImpl.NewProductRepo(driver.Mongo.Client.
 		Database(config.DB_NAME)).GetListProduct()
 	if err != nil {
-		fmt.Println(err)
-		http.Error(w, "Product not found!", http.StatusNotFound)
+		// fmt.Println(err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get product list"})
 		return
 	}
-	rsp.ResponseOk(w, rs)
+	// rsp.ResponseOk(w, rs)
+	c.JSON(http.StatusOK, rs)
 
 	// }
 }
-func AddNewProduct(w http.ResponseWriter, r *http.Request) {
+func AddNewProduct(c *gin.Context) {
 	var addData AddProductData
-	err := json.NewDecoder(r.Body).Decode(&addData)
+	err := json.NewDecoder(c.Request.Body).Decode(&addData)
 	if err != nil {
-		rsp.ResponseErr(w, http.StatusBadRequest)
+		rsp.ResponseErr(c.Writer, http.StatusBadRequest)
 		return
 	}
 	if errors := validation.ValidateStruct(addData); errors != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(map[string]interface{}{"errors": errors})
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(c.Writer).Encode(map[string]interface{}{"errors": errors})
 		return
 	}
 	_, err = repoImpl.NewProductRepo(driver.Mongo.Client.
@@ -111,7 +115,8 @@ func AddNewProduct(w http.ResponseWriter, r *http.Request) {
 		FindProductByName(addData.Name)
 
 	if err == nil {
-		rsp.ResponseErr(w, http.StatusConflict)
+		// rsp.ResponseErr(c.Writer, http.StatusConflict)
+		c.JSON(http.StatusConflict, gin.H{"error": "San pham da ton tai"})
 		return
 	}
 	newProduct := models.Product{
@@ -123,7 +128,8 @@ func AddNewProduct(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		fmt.Println("Khong thanh cong", err)
-		rsp.ResponseErr(w, http.StatusInternalServerError)
+		// rsp.ResponseErr(w, http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add new product"})
 	}
-	rsp.ResponseOk(w, newProduct)
+	rsp.ResponseOk(c.Writer, newProduct)
 }

@@ -1,12 +1,11 @@
 package main
 
 import (
-	"fmt"
 	"go-jwt-api/config"
 	"go-jwt-api/driver"
-	"go-jwt-api/handler"
-	"go-jwt-api/middleware"
-	"net/http"
+	"go-jwt-api/routes"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
@@ -24,15 +23,14 @@ func main() {
 	// if err == nil {
 	// 	fmt.Println("Chèn thành công!")
 	// }
-	http.HandleFunc("/login", middleware.AuthMiddleware(handler.Login))
-	http.HandleFunc("/register", middleware.AuthMiddleware(handler.Register))
-	http.HandleFunc("/user", middleware.AuthMiddleware(handler.GetUser))
-	http.HandleFunc("/product", handler.GetOneProduct)
-	http.HandleFunc("/listproduct", middleware.AuthMiddleware(handler.GetListProduct))
-	http.HandleFunc("/addproduct", handler.AddNewProduct)
 
-	fmt.Println("Server running [:8000]")
-	http.ListenAndServe(":8000", nil)
+	r := gin.Default()
+	routes.RegisterRoutes(r)
+	r.Use(gin.Logger())
+
+	r.Run(":8000")
+	// fmt.Println("Server running [:8000]")
+	// http.ListenAndServe(":8000", nil)
 	// user, _ := userRepo.FindUserByEmail("nguyenanh@gmail.com")
 	// fmt.Println(user)
 }

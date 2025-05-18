@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	config "go-jwt-api/config"
 	driver "go-jwt-api/driver"
 	models "go-jwt-api/model"
@@ -13,6 +14,7 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gin-gonic/gin"
 )
 
 var jwtKey = []byte("abcdefghijklmnopq")
@@ -23,13 +25,16 @@ type Claims struct {
 	jwt.StandardClaims `json:"_"`
 }
 
-func Register(w http.ResponseWriter, r *http.Request) {
+func Register(c *gin.Context) {
+
 	var regData models.RegistrationData
-	err := json.NewDecoder(r.Body).Decode(&regData)
+	err := json.NewDecoder(c.Request.Body).Decode(&regData)
 	// fmt.Println("===========", err)
 
 	if err != nil {
-		rs.ResponseErr(w, http.StatusBadRequest)
+		// rs.ResponseErr(c.Writer, http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, models.Error{
+			Status: http.StatusBadRequest, Message: http.StatusText(http.StatusBadRequest)})
 		return
 	}
 
@@ -38,7 +43,9 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		FindUserByEmail(regData.Email)
 
 	if err != models.ERR_USER_NOT_FOUND {
-		rs.ResponseErr(w, http.StatusConflict)
+		// rs.ResponseErr(c.Writer, http.StatusConflict)
+		c.JSON(http.StatusConflict, models.Error{
+			Status: http.StatusConflict, Message: "Người dùng đã tồn tại!"})
 		return
 	}
 
@@ -50,28 +57,28 @@ func Register(w http.ResponseWriter, r *http.Request) {
 	err = repoImpl.NewUserRepo(driver.Mongo.Client.
 		Database(config.DB_NAME)).Insert(user)
 	if err != nil {
-		rs.ResponseErr(w, http.StatusInternalServerError)
+		rs.ResponseErr(c.Writer, http.StatusInternalServerError)
 		return
 	}
 
 	var tokenString string
 	tokenString, err = GenToken(user)
 	if err != nil {
-		rs.ResponseErr(w, http.StatusInternalServerError)
+		rs.ResponseErr(c.Writer, http.StatusInternalServerError)
 		return
 	}
 
-	rs.ResponseOk(w, models.RegisterResponse{
+	rs.ResponseOk(c.Writer, models.RegisterResponse{
 		Token:  tokenString,
 		Status: http.StatusOK,
 	})
 }
 
-func Login(w http.ResponseWriter, r *http.Request) {
+func Login(c *gin.Context) {
 	var loginData models.LoginData
-	err := json.NewDecoder(r.Body).Decode(&loginData)
+	err := json.NewDecoder(c.Request.Body).Decode(&loginData)
 	if err != nil {
-		rs.ResponseErr(w, http.StatusBadRequest)
+		rs.ResponseErr(c.Writer, http.StatusBadRequest)
 		return
 	}
 
@@ -80,34 +87,36 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Database(config.DB_NAME)).
 		CheckLoginInfo(loginData.Email, loginData.Password)
 	if err != nil {
-		rs.ResponseErr(w, http.StatusUnauthorized)
+		fmt.Println("Error: ", err)
+		rs.ResponseErr(c.Writer, http.StatusUnauthorized)
 		return
 	}
 
 	var tokenString string
 	tokenString, err = GenToken(user)
 	if err != nil {
-		rs.ResponseErr(w, http.StatusInternalServerError)
+		rs.ResponseErr(c.Writer, http.StatusInternalServerError)
 		return
 	}
 
-	rs.ResponseOk(w, models.RegisterResponse{
+	rs.ResponseOk(c.Writer, models.RegisterResponse{
 		Token:  tokenString,
 		Status: http.StatusOK,
 	})
 }
 
-func GetUser(w http.ResponseWriter, r *http.Request) {
-	tokenHeader := r.Header.Get("Authorization")
+func GetUser(c *gin.Context) {
+	tokenHeader := c.Request.Header.Get("Authorization")
+	// fmt.Println("Token header: " + tokenHeader)
 
 	if tokenHeader == "" {
-		rs.ResponseErr(w, http.StatusForbidden)
+		rs.ResponseErr(c.Writer, http.StatusForbidden)
 		return
 	}
 
 	splitted := strings.Split(tokenHeader, " ") // Bearer jwt_token
 	if len(splitted) != 2 {
-		rs.ResponseErr(w, http.StatusForbidden)
+		rs.ResponseErr(c.Writer, http.StatusForbidden)
 		return
 	}
 
@@ -120,12 +129,12 @@ func GetUser(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		rs.ResponseErr(w, http.StatusInternalServerError)
+		rs.ResponseErr(c.Writer, http.StatusInternalServerError)
 		return
 	}
 
 	if token.Valid {
-		rs.ResponseOk(w, token.Claims)
+		rs.ResponseOk(c.Writer, token.Claims)
 	}
 }
 
